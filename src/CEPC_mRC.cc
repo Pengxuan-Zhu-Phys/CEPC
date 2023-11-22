@@ -201,10 +201,10 @@ namespace Rivet
         FourMomentum P_Wb;
 
         const HepMC3::GenEvent *genEvent = event.genEvent();
-        // MSG_INFO("New Events found particles ");
+        MSG_INFO("New Events found particles ");
         for (HepMC3::ConstGenParticlePtr particle : genEvent->particles())
         {
-          // MSG_INFO("Found W particle  -> " << particle->pid());
+          MSG_INFO("Found W particle tree  -> " << particle->pid() << "\t" << particle->momentum());
           if (particle->pid() == 24 || particle->pid() == -24)
           {
             if (hasChild(particle, 13))
@@ -219,7 +219,7 @@ namespace Rivet
             }
           }
         }
-        // MSG_INFO("New Events end loop particles ");
+        MSG_INFO("New Events end loop particles ");
 
         const double mWa = P_Wa.mass();
         // MSG_INFO("mWa is -> " << mWa);
