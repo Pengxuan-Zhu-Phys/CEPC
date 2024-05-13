@@ -15,6 +15,66 @@
 #include <fstream>
 #include <unordered_map>
 #include <vector>
+#include <cmath>
+
+class Vector3D {
+public:
+    double x, y, z;
+
+    // Make vector 3 
+    Vector3D(double x = 0.0, double y = 0.0, double z = 0.0) : x(x), y(y), z(z) {}
+    
+    double getX() const { return x; }
+    double getY() const { return y; }
+    double getZ() const { return z; }
+    // add  
+    Vector3D operator+(const Vector3D& v) const{
+      return Vector3D(x + v.x, y + v.y, z + v.z); 
+    }
+
+    // minus
+    Vector3D operator-(const Vector3D& v) const{
+      return Vector3D(x - v.x, y - v.y, z - v.z);
+    }
+
+    // multiple 
+    Vector3D operator*(const double scalar) const{
+      return Vector3D(x * scalar, y * scalar, z * scalar);
+    }
+    // Friend function for scalar-vector multiplication
+    friend Vector3D operator*(double scalar, const Vector3D& vec) {
+        return vec * scalar;  // Reuse the vector-scalar multiplication
+    }
+    // calculate the length 
+    double length() const {
+        return std::sqrt(x * x + y * y + z * z);
+    }
+
+    // dot 
+    double dot(const Vector3D& other) const {
+        return x * other.x + y * other.y + z * other.z;
+    }
+
+    // cross 
+    Vector3D cross(const Vector3D& v) const {
+      return {
+        y * v.z - z * v.y, 
+        z * v.x - x * v.z, 
+        x * v.y - y * v.x
+      };
+    }
+
+    // return unit vector 
+    Vector3D normalize() const {
+        double len = length();
+        if (len != 0) {
+            return *this * (1.0 / len);
+        }
+        return *this; // 返回自身，如果长度为0，保持不变
+    }
+
+};
+
 
 namespace Rivet
 {
@@ -204,18 +264,18 @@ namespace Rivet
         MSG_INFO("New Events found particles ");
         for (HepMC3::ConstGenParticlePtr particle : genEvent->particles())
         {
-          MSG_INFO("Found W particle tree  -> " << particle->pid() << "\t" << particle->momentum());
+          // MSG_INFO("Found W particle tree  -> " << particle->pid() << "\t" << particle->momentum());
           if (particle->pid() == 24 || particle->pid() == -24)
           {
             if (hasChild(particle, 13))
             {
               P_Wa = particle->momentum();
-              // MSG_INFO("P_Wa is " << P_Wa);
+              MSG_INFO("P_Wa is " << P_Wa);
             }
             if (hasChild(particle, 11))
             {
               P_Wb = particle->momentum();
-              // MSG_INFO("P_Wb is " << P_Wb);
+              MSG_INFO("P_Wb is " << P_Wb);
             }
           }
         }
@@ -272,60 +332,111 @@ namespace Rivet
       normalize(_Norm_hist_mRCmax);
     }
 
-    vector<double> mRC(const FourMomentum &met, const FourMomentum &l1, const FourMomentum &l2, const FourMomentum &ISR, const double &mI = 0.0) const
+    vector<double> mRC(const FourMomentum &met, const FourMomentum &Va, const FourMomentum &Vb, const FourMomentum &ISR, const double &mI = 0.0) const
     {
       // MSG_INFO("Tag 1");
-      FourMomentum CM = met + l1 + l2;
+      FourMomentum CM = met + Va + Vb;
 
       FourMomentum bmet;
-      FourMomentum bl1;
-      FourMomentum bl2;
+      FourMomentum bVa;
+      FourMomentum bVb;
       FourMomentum pISR;
 
       LorentzTransform LT = LorentzTransform::mkFrameTransformFromBeta(CM.betaVec());
 
       pISR = LT.transform(ISR);
       bmet = LT.transform(met);
-      bl1 = LT.transform(l1);
-      bl2 = LT.transform(l2);
+      bVa = LT.transform(Va);
+      bVb = LT.transform(Vb);
 
-      const double ss = (bmet.E() + bl1.E() + bl2.E()) / 2.;
-      const double pMiss = bmet.p3().mod();
-      const double pL1 = bl1.p3().mod();
-      const double pL2 = bl2.p3().mod();
-      const double EL1 = bl1.E();
-      const double EL2 = bl2.E();
-      const double EI1 = ss - EL1;
-      const double EI2 = ss - EL2;
+      const double ss = (bmet.E() + bVa.E() + bVb.E()) / 2.;
+      const double EVa = bVa.E();
+      const double EVb = bVb.E();
+      const double EIa = ss - EVa;
+      const double EIb = ss - EVb;
+      
+      const Vector3D p3I(bmet.px(), bmet.py(), bmet.pz());
+      const double lI = p3I.length();
+      const Vector3D nI = p3I.normalize();
 
-      const double pI1max = sqrt(EI1 * EI1 - mI * mI);
-      const double pI2max = sqrt(EI2 * EI2 - mI * mI);
+      const Vector3D p3Va(bVa.px(), bVa.py(), bVa.pz());
+      const double lVa = p3Va.length();
+      const Vector3D nVa = p3Va.normalize();
 
-      if (pI1max > 0. && pI2max > 0. && pI1max + pI2max > pMiss && pL1 + pL2 > pMiss && abs(pI1max - pI2max) < pMiss && abs(pL1 - pL2) < pMiss)
-      {
-        const vector<double> pos_C = solveXY(pI1max, pI2max, pMiss);
-        const vector<double> pos_B = solveXY(pL1, pL2, pMiss);
+      const Vector3D p3Vb(bVb.px(), bVb.py(), bVb.pz());
+      const double lVb = p3Vb.length();
+      const Vector3D nVb = p3Vb.normalize(); 
 
-        const double pMax2 = pow(pos_B[0] - pos_C[0], 2) + pow(pos_B[1] + pos_C[1], 2);
-        const double pMinX2 = pow(pos_B[0] - pos_C[0], 2);
-        const double pMinY2 = pos_B[1] > pos_C[1] ? pow(pos_B[1] - pos_C[1], 2) : 0.0;
-        const double pLSP2 = pow(pos_B[0] - pos_C[0], 2) + pow(pos_B[1], 2);
+      // const double pI1max = sqrt(EVa * EVa - mI * mI);
+      // const double pI2max = sqrt(EVb * EVb - mI * mI);
 
-        const double mYmax = sqrt(ss * ss - pMinX2 - pMinY2);
-        const double mYmin = sqrt(ss * ss - pMax2);
-        const double mImax = sqrt(EI1 * EI1 - pos_C[0] * pos_C[0]);
-        const double mYLSP = sqrt(ss * ss - pLSP2);
+      const double costhetaIVa = nI.dot(nVa);
+      const double costhetaIVb = nI.dot(nVb);
+      const double costhetaVab = nVa.dot(nVb);
 
-        // return mYmin;
-        const vector<double> mrc = {mYmin, mYmax, mImax, mYLSP};
-        return mrc;
-      }
-      else
-      {
-        MSG_INFO("Erroring in reconstructing mass");
-        const vector<double> mYmax = {-1.0, -1.0};
-        return mYmax;
-      }
+      // Define the basis vector 
+      Vector3D h3V = nI * lVa * costhetaIVa - p3Va; 
+      Vector3D nhV = h3V.normalize(); 
+
+      Vector3D r3V = nI.cross(nhV); 
+      Vector3D rV  = r3V.normalize(); 
+      // basis vector : {nI, nhV, rV}
+
+      // Solve the visible triangle 
+      const vector<double> pos_V = solveXY(lVa, lVb, lI); 
+      const vector<double> pos_I = solveXY(EIa, EIb, lI); 
+
+      const Vector3D p3O = pos_I[0] * nI; 
+      const Vector3D p3A = pos_I[0] * nI - pos_I[1] * nhV; 
+      const Vector3D p3B = pos_I[0] * nI + pos_I[1] * nhV; 
+      const Vector3D p3M(0., 0., 0.); 
+      const Vector3D p3N = lI * nI; 
+      const Vector3D p3P = pos_V[0] * nI + pos_V[1] * nhV; 
+
+      const Vector3D p3Pa_A = p3P - p3A; 
+      const Vector3D p3Pa_B = p3P - p3B; 
+      const Vector3D p3Pa_O = p3P - p3O; 
+
+      const FourMomentum pPa_O(ss, p3Pa_O.getX(), p3Pa_O.getY(), p3Pa_O.getZ()); 
+
+      const double mImax = sqrt(EIa * EIa - p3O.dot(p3O)); 
+      const double mPmax = sqrt(EVa * EVa - p3Pa_A.dot(p3Pa_A)); 
+      const double mPmin = sqrt(EVa * EVa - p3Pa_B.dot(p3Pa_B)); 
+      const double mPLSP = sqrt(EVa * EVa - p3Pa_O.dot(p3Pa_O)); 
+
+      const vector<double> mrc = {mPmin, mPmax, mImax, mPLSP};
+      return mrc;
+
+      
+
+
+      // if (pI1max > 0. && pI2max > 0. && pI1max + pI2max > pMiss && pL1 + pL2 > pMiss && abs(pI1max - pI2max) < pMiss && abs(pL1 - pL2) < pMiss)
+      // {
+        
+
+      //   const vector<double> pos_C = solveXY(pI1max, pI2max, pMiss);
+      //   const vector<double> pos_B = solveXY(pL1, pL2, pMiss);
+
+      //   const double pMax2 = pow(pos_B[0] - pos_C[0], 2) + pow(pos_B[1] + pos_C[1], 2);
+      //   const double pMinX2 = pow(pos_B[0] - pos_C[0], 2);
+      //   const double pMinY2 = pos_B[1] > pos_C[1] ? pow(pos_B[1] - pos_C[1], 2) : 0.0;
+      //   const double pLSP2 = pow(pos_B[0] - pos_C[0], 2) + pow(pos_B[1], 2);
+
+      //   const double mYmax = sqrt(ss * ss - pMinX2 - pMinY2);
+      //   const double mYmin = sqrt(ss * ss - pMax2);
+      //   const double mImax = sqrt(EI1 * EI1 - pos_C[0] * pos_C[0]);
+      //   const double mYLSP = sqrt(ss * ss - pLSP2);
+
+      //   // return mYmin;
+      //   const vector<double> mrc = {mYmin, mYmax, mImax, mYLSP};
+      //   return mrc;
+      // }
+      // else
+      // {
+      //   MSG_INFO("Erroring in reconstructing mass");
+      //   const vector<double> mYmax = {-1.0, -1.0};
+      //   return mYmax;
+      // }
     }
 
     vector<double> solveXY(const double &p1, const double &p2, const double &pMiss) const
