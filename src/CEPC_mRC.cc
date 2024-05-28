@@ -251,11 +251,11 @@ namespace Rivet
         const double Emiss = pMiss.E();
 
         const double mVV = (muonFS[0].momentum() + elecFS[0].momentum()).mass();
-        vector<double> mrc = mRC(pMiss, muonFS[0].mom(), elecFS[0].mom(), P_ISR, 0.);
-        const double mRCmin = mrc[0];
-        const double mRCmax = mrc[1];
-        const double mLSPmax = mrc[2];
-        const double mRCLSP = mrc[3];
+        vector<FourMomentum> mrc = solve_semi_pIa(pMiss, muonFS[0].mom(), elecFS[0].mom(), P_ISR, 0.);
+        // const double mRCmin = mrc[0];
+        // const double mRCmax = mrc[1];
+        // const double mLSPmax = mrc[2];
+        // const double mRCLSP = mrc[3];
 
         FourMomentum P_Wa;
         FourMomentum P_Wb;
@@ -332,7 +332,7 @@ namespace Rivet
       normalize(_Norm_hist_mRCmax);
     }
 
-    vector<double> mRC(const FourMomentum &met, const FourMomentum &Va, const FourMomentum &Vb, const FourMomentum &ISR, const double &mI = 0.0) const
+    vector<FourMomentum> solve_semi_pIa(const FourMomentum &met, const FourMomentum &Va, const FourMomentum &Vb, const FourMomentum &ISR, const double &mI = 0.0) const
     {
       // MSG_INFO("Tag 1");
       FourMomentum CM = met + Va + Vb;
@@ -343,6 +343,8 @@ namespace Rivet
       FourMomentum pISR;
 
       LorentzTransform LT = LorentzTransform::mkFrameTransformFromBeta(CM.betaVec());
+      LorentzTransform ivsLT = LT.inverse();
+
 
       pISR = LT.transform(ISR);
       bmet = LT.transform(met);
@@ -398,14 +400,23 @@ namespace Rivet
       const Vector3D p3Pa_O = p3P - p3O; 
 
       const FourMomentum pPa_O(ss, p3Pa_O.getX(), p3Pa_O.getY(), p3Pa_O.getZ()); 
+      const FourMomentum pPa_A(ss, p3Pa_A.getX(), p3Pa_A.getY(), p3Pa_A.getZ());
+      const FourMomentum pPa_B(ss, p3Pa_B.getX(), p3Pa_B.getY(), p3Pa_B.getZ()); 
 
+      const FourMomentum pIa_O(EIa, p3O.getX(), p3O.getY(), p3O.getZ());
+      const FourMomentum pIa_A(EIa, p3A.getX(), p3A.getY(), p3A.getZ());
+      const FourMomentum pIa_B(EIa, p3B.getX(), p3B.getY(), p3B.getZ());
+      
+      const FourMomentum pIaO = ivsLT.transform(pIa_O);
+      const FourMomentum pIaA = ivsLT.transform(pIa_A);
+      const FourMomentum pIaB = ivsLT.transform(pIa_A);
       const double mImax = sqrt(EIa * EIa - p3O.dot(p3O)); 
       const double mPmax = sqrt(EVa * EVa - p3Pa_A.dot(p3Pa_A)); 
       const double mPmin = sqrt(EVa * EVa - p3Pa_B.dot(p3Pa_B)); 
       const double mPLSP = sqrt(EVa * EVa - p3Pa_O.dot(p3Pa_O)); 
 
-      const vector<double> mrc = {mPmin, mPmax, mImax, mPLSP};
-      return mrc;
+      const vector<FourMomentum> pIa = {pIaO, pIaA, pIaB};
+      return pIa;
 
       
 
