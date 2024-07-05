@@ -191,14 +191,14 @@ namespace Rivet
 
       // Book histograms
       // specify custom binning
-      book(_hist_Wmin, "hist_Wmass_mRCmin", 50, 75, 85);
-      book(_hist_Wmax, "hist_Wmass_mRCmax", 50, 75, 85);
-      book(_Norm_hist_Wmin, "Nhist_Wmass_mRCmin", 50, 75, 85);
-      book(_Norm_hist_Wmax, "Nhist_Wmass_mRCmax", 50, 75, 85);
-      book(_hist_mRCmin, "hist_mRCmin", 240, 0., 125.);
-      book(_hist_mRCmax, "hist_mRCmax", 240, 0., 125.);
-      book(_Norm_hist_mRCmin, "Nhist_mRCmin", 250, 0., 125.);
-      book(_Norm_hist_mRCmax, "Nhist_mRCmax", 250, 0., 125.);
+      // book(_hist_Wmin, "hist_Wmass_mRCmin", 50, 75, 85);
+      // book(_hist_Wmax, "hist_Wmass_mRCmax", 50, 75, 85);
+      // book(_Norm_hist_Wmin, "Nhist_Wmass_mRCmin", 50, 75, 85);
+      // book(_Norm_hist_Wmax, "Nhist_Wmass_mRCmax", 50, 75, 85);
+      // book(_hist_mRCmin, "hist_mRCmin", 240, 0., 125.);
+      // book(_hist_mRCmax, "hist_mRCmax", 240, 0., 125.);
+      // book(_Norm_hist_mRCmin, "Nhist_mRCmin", 250, 0., 125.);
+      // book(_Norm_hist_mRCmax, "Nhist_mRCmax", 250, 0., 125.);
     }
 
     /// Perform the per-event analysis
@@ -232,47 +232,76 @@ namespace Rivet
       P_Sum.setPz(0.);
 
       pMiss.setE(eC1 + eC2 + pMiss.E());
-      // const double Emiss = pMiss.E();
 
-      bool wmassPre = false;
+      FourMomentum PVa; 
+      FourMomentum PVb; 
+      // const double Emiss = pMiss.E();
+      bool TagEE = false; 
+      bool TagMM = false;
+      bool TagEM = false; 
+      bool Preseletion = false; 
+
       if (nmuon == 1 && nelec == 1 && pMiss.E() >= 1.0)
       {
         if (muonFS[0].charge() * elecFS[0].charge() < 0)
         {
-          wmassPre = true;
+          TagEM = true;
+          Preseletion = true; 
+          PVa = (muonFS[0].charge() > 0) ? muonFS[0].momentum() : elecFS[0].momentum(); 
+          PVb = (muonFS[0].charge() > 0) ? elecFS[0].momentum() : muonFS[0].momentum(); 
+        }
+      }
+      else if (nmuon == 2 && nelec == 0 && pMiss.E() >= 1.0)
+      {
+        if (muonFS[0].charge() * muonFS[1].charge() < 0) 
+        {
+          TagMM = true; 
+          Preseletion = true; 
+          PVa = (muonFS[0].charge() > 0) ? muonFS[0].momentum() : muonFS[1].momentum(); 
+          PVb = (muonFS[0].charge() > 0) ? muonFS[1].momentum() : muonFS[0].momentum(); 
+        }
+      }
+      else if (nmuon == 0 && nelec == 2 && pMiss.E() >= 1.0) 
+      {
+        if (elecFS[0].charge() * elecFS[1].charge() < 0)
+        {
+          TagEE = true; 
+          Preseletion = true; 
+          PVa = (elecFS[0].charge() > 0) ? elecFS[0].momentum() : elecFS[1].momentum(); 
+          PVb = (elecFS[0].charge() > 0) ? elecFS[1].momentum() : elecFS[0].momentum(); 
         }
       }
       // Pass Preselection
-      if (wmassPre)
+      if (Preseletion)
       {
-        FourMomentum P_ISR = P_Sum - pMiss - muonFS[0].momentum() - elecFS[0].momentum();
-        FourMomentum P_recoil = P_Sum - muonFS[0].momentum() - elecFS[0].momentum();
+        FourMomentum P_ISR = P_Sum - pMiss - PVa - PVb;
+        FourMomentum P_recoil = P_Sum - PVa - PVb;
         const double mRecoil = P_recoil.mass();
         const double Emiss = pMiss.E();
 
-        const double mVV = (muonFS[0].momentum() + elecFS[0].momentum()).mass();
+        const double mVV = (PVa + PVb).mass();
         // mRC(pMiss, pVa, pVb, pISR, mI); 
-        vector<FourMomentum> mrc = mRC(pMiss, muonFS[0].mom(), elecFS[0].mom(), P_ISR);
+        vector<FourMomentum> mrc = mRC(pMiss, PVa, PVb, P_ISR);
         const FourMomentum p4Ia_O = mrc[0];
         const FourMomentum p4Ia_A = mrc[1];
         const FourMomentum p4Ia_B = mrc[2];
         const FourMomentum p4Ia_C = mrc[3]; 
 
         const FourMomentum p4Ib_O = pMiss - p4Ia_O; 
-        const FourMomentum p4Pa_O = muonFS[0].momentum() + p4Ia_O; 
-        const FourMomentum p4Pb_0 = elecFS[0].momentum() + p4Ib_O; 
+        const FourMomentum p4Pa_O = PVa + p4Ia_O; 
+        const FourMomentum p4Pb_0 = PVb + p4Ib_O; 
 
         const FourMomentum p4Ib_A = pMiss - p4Ia_A; 
-        const FourMomentum p4Pa_A = muonFS[0].momentum() + p4Ia_A; 
-        const FourMomentum p4Pb_A = elecFS[0].momentum() + p4Ib_A; 
+        const FourMomentum p4Pa_A = PVa + p4Ia_A; 
+        const FourMomentum p4Pb_A = PVb + p4Ib_A; 
 
         const FourMomentum p4Ib_B = pMiss - p4Ia_B; 
-        const FourMomentum p4Pa_B = muonFS[0].momentum() + p4Ia_B; 
-        const FourMomentum p4Pb_B = elecFS[0].momentum() + p4Ib_B; 
+        const FourMomentum p4Pa_B = PVa + p4Ia_B; 
+        const FourMomentum p4Pb_B = PVb + p4Ib_B; 
 
         const FourMomentum p4Ib_C = pMiss - p4Ia_C; 
-        const FourMomentum p4Pa_C = muonFS[0].momentum() + p4Ia_C; 
-        const FourMomentum p4Pb_C = elecFS[0].momentum() + p4Ib_C; 
+        const FourMomentum p4Pa_C = PVa + p4Ia_C; 
+        const FourMomentum p4Pb_C = PVb + p4Ib_C; 
 
         double mRCmin     = p4Pa_A.mass();
         double mRC_B      = p4Pa_B.mass();
@@ -281,110 +310,149 @@ namespace Rivet
         double mRCLSP     = p4Pa_O.mass(); 
         double mLSPmax    = p4Ia_O.mass(); 
 
-        double dRVaVb     = deltaR(muonFS[0].momentum(), elecFS[0].momentum()); 
+        double dRVaVb     = deltaR(PVa, PVb); 
 
-        double dRVaIa_O   = deltaR(muonFS[0].momentum(), p4Ia_O); 
-        double dRVbIb_O   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRVaIa_O   = deltaR(PVa, p4Ia_O); 
+        double dRVbIb_O   = deltaR(PVb, p4Ib_O); 
         double dRIaIb_O   = deltaR(p4Ia_O, p4Ib_O); 
-        double cstaPa_O   = p4Pa_O.p3().unit().dot(axis); 
-        double cstaPb_O   = p4Pb_0.p3().unit().dot(axis); 
+        double ctheta_pO  = p4Pa_O.p3().unit().dot(axis); 
+        double ctheta_mO  = p4Pb_0.p3().unit().dot(axis); 
 
-        double dRVaIa_A   = deltaR(muonFS[0].momentum(), p4Ia_O); 
-        double dRVbIb_A   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRVaIa_A   = deltaR(PVa, p4Ia_O); 
+        double dRVbIb_A   = deltaR(PVb, p4Ib_O); 
         double dRIaIb_A   = deltaR(p4Ia_A, p4Ib_A); 
-        double cstaPa_A   = p4Pa_A.p3().unit().dot(axis); 
-        double cstaPb_A   = p4Pb_A.p3().unit().dot(axis); 
+        double ctheta_pA  = p4Pa_A.p3().unit().dot(axis); 
+        double ctheta_mA  = p4Pb_A.p3().unit().dot(axis); 
 
-        double dRVaIa_B   = deltaR(muonFS[0].momentum(), p4Ia_O); 
-        double dRVbIb_B   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRVaIa_B   = deltaR(PVa, p4Ia_O); 
+        double dRVbIb_B   = deltaR(PVb, p4Ib_O); 
         double dRIaIb_B   = deltaR(p4Ia_B, p4Ib_B); 
-        double cstaPa_B   = p4Pa_B.p3().unit().dot(axis); 
-        double cstaPb_B   = p4Pb_B.p3().unit().dot(axis); 
+        double ctheta_pB  = p4Pa_B.p3().unit().dot(axis); 
+        double ctheta_mB  = p4Pb_B.p3().unit().dot(axis); 
 
-        double dRVaIa_C   = deltaR(muonFS[0].momentum(), p4Ia_O); 
-        double dRVbIb_C   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRVaIa_C   = deltaR(PVa, p4Ia_O); 
+        double dRVbIb_C   = deltaR(PVb, p4Ib_O); 
         double dRIaIb_C   = deltaR(p4Ia_C, p4Ib_C); 
-        double cstaPa_C   = p4Pa_C.p3().unit().dot(axis); 
-        double cstaPb_C   = p4Pb_C.p3().unit().dot(axis); 
-
-        if (muonFS[0].charge() > 0 )
-        {
-          double ctheta_pO = cstaPa_O; 
-          double ctheta_pA = cstaPa_A; 
-          double ctheta_pB = cstaPa_B; 
-          double ctheta_pC = cstaPa_C; 
-
-          double ctheta_mO = cstaPb_O; 
-          double ctheta_mA = cstaPb_A; 
-          double ctheta_mB = cstaPb_B; 
-          double ctheta_mC = cstaPb_C; 
-        }
-        else 
-        {
-          double ctheta_mO = cstaPa_O; 
-          double ctheta_mA = cstaPa_A; 
-          double ctheta_mB = cstaPa_B; 
-          double ctheta_mC = cstaPa_C; 
-
-          double ctheta_pO = cstaPb_O; 
-          double ctheta_pA = cstaPb_A; 
-          double ctheta_pB = cstaPb_B; 
-          double ctheta_pC = cstaPb_C; 
-        }
+        double ctheta_pC  = p4Pa_C.p3().unit().dot(axis); 
+        double ctheta_mC  = p4Pb_C.p3().unit().dot(axis); 
 
         double ctheta_pMax = (mRC_B > mRC_C) ? ctheta_pB : ctheta_pC; 
         double ctheta_mMax = (mRC_B > mRC_C) ? ctheta_mB : ctheta_mC; 
 
 
+        df.addRow({
+          {"pVa.px",    PVa.px()},
+          {"pVa.py",    PVa.py()},
+          {"pVa.pz",    PVa.pz()},
+          {"pVa.E",     PVa.E()},
+          {"pVb.px",    PVb.px()},
+          {"pVb.py",    PVb.py()},
+          {"pVb.pz",    PVb.pz()},
+          {"pVb.E",     PVb.E()},
+          {"pMiss.px",  pMiss.px()},
+          {"pMiss.py",  pMiss.py()},
+          {"pMiss.pz",  pMiss.pz()},
+          {"pMiss.E",   pMiss.E()},
+          {"pIa_O.px",  p4Ia_O.px()},
+          {"pIa_O.py",  p4Ia_O.py()},
+          {"pIa_O.pz",  p4Ia_O.pz()},
+          {"pIa_O.E",   p4Ia_O.E()},
+          {"pIb_O.px",  p4Ib_O.px()},
+          {"pIb_O.py",  p4Ib_O.py()},
+          {"pIb_O.pz",  p4Ib_O.pz()},
+          {"pIb_O.E",   p4Ib_O.E()},
+          {"pIa_A.px",  p4Ia_A.px()},
+          {"pIa_A.py",  p4Ia_A.py()},
+          {"pIa_A.pz",  p4Ia_A.pz()},
+          {"pIa_A.E",   p4Ia_A.E()},
+          {"pIb_A.px",  p4Ib_A.px()},
+          {"pIb_A.py",  p4Ib_A.py()},
+          {"pIb_A.pz",  p4Ib_A.pz()},
+          {"pIb_A.E",   p4Ib_A.E()},
+          {"pIa_B.px",  p4Ia_O.px()},
+          {"pIa_B.py",  p4Ia_O.py()},
+          {"pIa_B.pz",  p4Ia_O.pz()},
+          {"pIa_B.E",   p4Ia_O.E()},
+          {"pIb_B.px",  p4Ib_O.px()},
+          {"pIb_B.py",  p4Ib_O.py()},
+          {"pIb_B.pz",  p4Ib_O.pz()},
+          {"pIb_B.E",   p4Ib_O.E()},
+          {"pIa_C.px",  p4Ia_C.px()},
+          {"pIa_C.py",  p4Ia_C.py()},
+          {"pIa_C.pz",  p4Ia_C.pz()},
+          {"pIa_C.E",   p4Ia_C.E()},
+          {"pIb_C.px",  p4Ib_C.px()},
+          {"pIb_C.py",  p4Ib_C.py()},
+          {"pIb_C.pz",  p4Ib_C.pz()},
+          {"pIb_C.E",   p4Ib_C.E()},          {"mRCmin",    mRCmin},
+          {"mRCmax",    mRCmax},
+          {"mRCLSP",    mRCLSP},
+          {"mLSPmax",   mLSPmax},
+          {"mRecoil",   mRecoil},
+          {"mVV",       mVV},
+          {"mInv",      pMiss.mass()},
+          {"dRVaVb",    dRVaVb},
+          {"dRVaIa_O",  dRVaIa_O},
+          {"dRVaIa_A",  dRVaIa_A},
+          {"dRVaIa_B",  dRVaIa_B},
+          {"dRVaIa_C",  dRVaIa_C},
+          {"dRVbIb_O",  dRVbIb_O},
+          {"dRVbIb_A",  dRVbIb_A},
+          {"dRVbIb_B",  dRVbIb_B},
+          {"dRVbIb_C",  dRVbIb_C},
+          {"dRIaIb_O",  dRIaIb_O},
+          {"dRIaIb_A",  dRIaIb_A},
+          {"dRIaIb_B",  dRIaIb_B},
+          {"dRIaIb_C",  dRIaIb_C},
+          {"ctheta_pO", ctheta_pO},
+          {"ctheta_pA", ctheta_pA},
+          {"chteta_pB", ctheta_pB},
+          {"chteta_pC", ctheta_pC},
+          {"chteta_pMax", ctheta_pMax},
+          {"ctheta_mO", ctheta_mO},
+          {"ctheta_mA", ctheta_mA},
+          {"chteta_mB", ctheta_mB},
+          {"chteta_mC", ctheta_mC},
+          {"chteta_mMax", ctheta_mMax},
+        });
+
 
         // FourMomentum P_Wa;
         // FourMomentum P_Wb;
 
-        const HepMC3::GenEvent *genEvent = event.genEvent();
-        MSG_INFO("New Events found particles ");
-        for (HepMC3::ConstGenParticlePtr particle : genEvent->particles())
-        {
-          // MSG_INFO("Found W particle tree  -> " << particle->pid() << "\t" << particle->momentum());
-          if (particle->pid() == 24 || particle->pid() == -24)
-          {
-            if (hasChild(particle, 13))
-            {
-              P_Wa = particle->momentum();
-              MSG_INFO("P_Wa is " << P_Wa);
-            }
-            if (hasChild(particle, 11))
-            {
-              P_Wb = particle->momentum();
-              MSG_INFO("P_Wb is " << P_Wb);
-            }
-          }
-        }
-        MSG_INFO("New Events end loop particles ");
+        // const HepMC3::GenEvent *genEvent = event.genEvent();
+        // MSG_INFO("New Events found particles ");
+        // for (HepMC3::ConstGenParticlePtr particle : genEvent->particles())
+        // {
+        //   // MSG_INFO("Found W particle tree  -> " << particle->pid() << "\t" << particle->momentum());
+        //   if (particle->pid() == 24 || particle->pid() == -24)
+        //   {
+        //     if (hasChild(particle, 13))
+        //     {
+        //       P_Wa = particle->momentum();
+        //       MSG_INFO("P_Wa is " << P_Wa);
+        //     }
+        //     if (hasChild(particle, 11))
+        //     {
+        //       P_Wb = particle->momentum();
+        //       MSG_INFO("P_Wb is " << P_Wb);
+        //     }
+        //   }
+        // }
+        // MSG_INFO("New Events end loop particles ");
 
-        const double mWa = P_Wa.mass();
-        // MSG_INFO("mWa is -> " << mWa);
-        const double mWb = P_Wb.mass();
-        _hist_Wmin->fill(mRCmin);
-        _hist_Wmax->fill(mRCmax);
-        _Norm_hist_Wmin->fill(mRCmin);
-        _Norm_hist_Wmax->fill(mRCmax);
-        _hist_mRCmin->fill(mRCmin);
-        _hist_mRCmax->fill(mRCmax);
-        _Norm_hist_mRCmin->fill(mRCmin);
-        _Norm_hist_mRCmax->fill(mRCmax);
+        // const double mWa = P_Wa.mass();
+        // // MSG_INFO("mWa is -> " << mWa);
+        // const double mWb = P_Wb.mass();
+        // _hist_Wmin->fill(mRCmin);
+        // _hist_Wmax->fill(mRCmax);
+        // _Norm_hist_Wmin->fill(mRCmin);
+        // _Norm_hist_Wmax->fill(mRCmax);
+        // _hist_mRCmin->fill(mRCmin);
+        // _hist_mRCmax->fill(mRCmax);
+        // _Norm_hist_mRCmin->fill(mRCmin);
+        // _Norm_hist_mRCmax->fill(mRCmax);
 
-        df.addRow({{"mRCmin", mRCmin},
-                   {"mRCmax", mRCmax},
-                   {"mRCLSP", mRCLSP},
-                   {"mLSPmax", mLSPmax},
-                   {"mRecoil", mRecoil},
-                   {"pVa", muonFS[0].p3().mod()},
-                   {"pVb", elecFS[0].p3().mod()},
-                   {"mVV", mVV},
-                   {"EMiss", Emiss},
-                   {"pMiss", pMiss.p3().mod()},
-                   {"mWa", mWa},
-                   {"mWb", mWb}});
       }
       else
         return;
@@ -401,15 +469,15 @@ namespace Rivet
 
       MSG_INFO("Norm is " << norm);
       MSG_INFO("Total Cross section is " << crossSection() / femtobarn << " femtobarn!");
-      scale(_hist_mRCmin, sf * Lint / sumW()); // norm to generated cross-section in pb (after cuts)
-      scale(_hist_mRCmax, sf * Lint / sumW()); // norm to generated cross-section in pb (after cuts)
-      scale(_hist_Wmin, sf * Lint / sumW());   // norm to generated cross-section in pb (after cuts)
-      scale(_hist_Wmax, sf * Lint / sumW());   // norm to generated cross-section in pb (after cuts)
+      // scale(_hist_mRCmin, sf * Lint / sumW()); // norm to generated cross-section in pb (after cuts)
+      // scale(_hist_mRCmax, sf * Lint / sumW()); // norm to generated cross-section in pb (after cuts)
+      // scale(_hist_Wmin, sf * Lint / sumW());   // norm to generated cross-section in pb (after cuts)
+      // scale(_hist_Wmax, sf * Lint / sumW());   // norm to generated cross-section in pb (after cuts)
 
-      normalize(_Norm_hist_Wmin);
-      normalize(_Norm_hist_Wmax);
-      normalize(_Norm_hist_mRCmin);
-      normalize(_Norm_hist_mRCmax);
+      // normalize(_Norm_hist_Wmin);
+      // normalize(_Norm_hist_Wmax);
+      // normalize(_Norm_hist_mRCmin);
+      // normalize(_Norm_hist_mRCmax);
     }
 
     vector<FourMomentum> mRC(const FourMomentum &met, const FourMomentum &Va, const FourMomentum &Vb, const FourMomentum &ISR) const
@@ -565,18 +633,18 @@ namespace Rivet
     std::string dfname;
     DataFrame df;
 
-    map<string, Histo1DPtr> _h;
-    map<string, Profile1DPtr> _p;
-    map<string, CounterPtr> _c;
+    // map<string, Histo1DPtr> _h;
+    // map<string, Profile1DPtr> _p;
+    // map<string, CounterPtr> _c;
     /// @}
-    Histo1DPtr _hist_Wmin;
-    Histo1DPtr _hist_Wmax;
-    Histo1DPtr _Norm_hist_Wmin;
-    Histo1DPtr _Norm_hist_Wmax;
-    Histo1DPtr _hist_mRCmin;
-    Histo1DPtr _hist_mRCmax;
-    Histo1DPtr _Norm_hist_mRCmin;
-    Histo1DPtr _Norm_hist_mRCmax;
+    // Histo1DPtr _hist_Wmin;
+    // Histo1DPtr _hist_Wmax;
+    // Histo1DPtr _Norm_hist_Wmin;
+    // Histo1DPtr _Norm_hist_Wmax;
+    // Histo1DPtr _hist_mRCmin;
+    // Histo1DPtr _hist_mRCmax;
+    // Histo1DPtr _Norm_hist_mRCmin;
+    // Histo1DPtr _Norm_hist_mRCmax;
     /// @}
   };
 
