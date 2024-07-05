@@ -251,13 +251,94 @@ namespace Rivet
         const double Emiss = pMiss.E();
 
         const double mVV = (muonFS[0].momentum() + elecFS[0].momentum()).mass();
-        vector<FourMomentum> mrc = mRC(pMiss, muonFS[0].mom(), elecFS[0].mom(), P_ISR, 0.);
+        // mRC(pMiss, pVa, pVb, pISR, mI); 
+        vector<FourMomentum> mrc = mRC(pMiss, muonFS[0].mom(), elecFS[0].mom(), P_ISR);
         const FourMomentum p4Ia_O = mrc[0];
         const FourMomentum p4Ia_A = mrc[1];
         const FourMomentum p4Ia_B = mrc[2];
+        const FourMomentum p4Ia_C = mrc[3]; 
 
-        FourMomentum P_Wa;
-        FourMomentum P_Wb;
+        const FourMomentum p4Ib_O = pMiss - p4Ia_O; 
+        const FourMomentum p4Pa_O = muonFS[0].momentum() + p4Ia_O; 
+        const FourMomentum p4Pb_0 = elecFS[0].momentum() + p4Ib_O; 
+
+        const FourMomentum p4Ib_A = pMiss - p4Ia_A; 
+        const FourMomentum p4Pa_A = muonFS[0].momentum() + p4Ia_A; 
+        const FourMomentum p4Pb_A = elecFS[0].momentum() + p4Ib_A; 
+
+        const FourMomentum p4Ib_B = pMiss - p4Ia_B; 
+        const FourMomentum p4Pa_B = muonFS[0].momentum() + p4Ia_B; 
+        const FourMomentum p4Pb_B = elecFS[0].momentum() + p4Ib_B; 
+
+        const FourMomentum p4Ib_C = pMiss - p4Ia_C; 
+        const FourMomentum p4Pa_C = muonFS[0].momentum() + p4Ia_C; 
+        const FourMomentum p4Pb_C = elecFS[0].momentum() + p4Ib_C; 
+
+        double mRCmin     = p4Pa_A.mass();
+        double mRC_B      = p4Pa_B.mass();
+        double mRC_C      = p4Pa_C.mass(); 
+        double mRCmax     = (mRC_B > mRC_C) ? mRC_B : mRC_C; 
+        double mRCLSP     = p4Pa_O.mass(); 
+        double mLSPmax    = p4Ia_O.mass(); 
+
+        double dRVaVb     = deltaR(muonFS[0].momentum(), elecFS[0].momentum()); 
+
+        double dRVaIa_O   = deltaR(muonFS[0].momentum(), p4Ia_O); 
+        double dRVbIb_O   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRIaIb_O   = deltaR(p4Ia_O, p4Ib_O); 
+        double cstaPa_O   = p4Pa_O.p3().unit().dot(axis); 
+        double cstaPb_O   = p4Pb_0.p3().unit().dot(axis); 
+
+        double dRVaIa_A   = deltaR(muonFS[0].momentum(), p4Ia_O); 
+        double dRVbIb_A   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRIaIb_A   = deltaR(p4Ia_A, p4Ib_A); 
+        double cstaPa_A   = p4Pa_A.p3().unit().dot(axis); 
+        double cstaPb_A   = p4Pb_A.p3().unit().dot(axis); 
+
+        double dRVaIa_B   = deltaR(muonFS[0].momentum(), p4Ia_O); 
+        double dRVbIb_B   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRIaIb_B   = deltaR(p4Ia_B, p4Ib_B); 
+        double cstaPa_B   = p4Pa_B.p3().unit().dot(axis); 
+        double cstaPb_B   = p4Pb_B.p3().unit().dot(axis); 
+
+        double dRVaIa_C   = deltaR(muonFS[0].momentum(), p4Ia_O); 
+        double dRVbIb_C   = deltaR(elecFS[0].momentum(), p4Ib_O); 
+        double dRIaIb_C   = deltaR(p4Ia_C, p4Ib_C); 
+        double cstaPa_C   = p4Pa_C.p3().unit().dot(axis); 
+        double cstaPb_C   = p4Pb_C.p3().unit().dot(axis); 
+
+        if (muonFS[0].charge() > 0 )
+        {
+          double ctheta_pO = cstaPa_O; 
+          double ctheta_pA = cstaPa_A; 
+          double ctheta_pB = cstaPa_B; 
+          double ctheta_pC = cstaPa_C; 
+
+          double ctheta_mO = cstaPb_O; 
+          double ctheta_mA = cstaPb_A; 
+          double ctheta_mB = cstaPb_B; 
+          double ctheta_mC = cstaPb_C; 
+        }
+        else 
+        {
+          double ctheta_mO = cstaPa_O; 
+          double ctheta_mA = cstaPa_A; 
+          double ctheta_mB = cstaPa_B; 
+          double ctheta_mC = cstaPa_C; 
+
+          double ctheta_pO = cstaPb_O; 
+          double ctheta_pA = cstaPb_A; 
+          double ctheta_pB = cstaPb_B; 
+          double ctheta_pC = cstaPb_C; 
+        }
+
+        double ctheta_pMax = (mRC_B > mRC_C) ? ctheta_pB : ctheta_pC; 
+        double ctheta_mMax = (mRC_B > mRC_C) ? ctheta_mB : ctheta_mC; 
+
+
+
+        // FourMomentum P_Wa;
+        // FourMomentum P_Wb;
 
         const HepMC3::GenEvent *genEvent = event.genEvent();
         MSG_INFO("New Events found particles ");
@@ -331,7 +412,7 @@ namespace Rivet
       normalize(_Norm_hist_mRCmax);
     }
 
-    vector<FourMomentum> mRC(const FourMomentum &met, const FourMomentum &Va, const FourMomentum &Vb, const FourMomentum &ISR, const double &mI = 0.0) const
+    vector<FourMomentum> mRC(const FourMomentum &met, const FourMomentum &Va, const FourMomentum &Vb, const FourMomentum &ISR) const
     {
       // MSG_INFO("Tag 1");
       FourMomentum CM = met + Va + Vb;
@@ -389,32 +470,36 @@ namespace Rivet
       const Vector3D p3O = pos_I[0] * nI; 
       const Vector3D p3A = pos_I[0] * nI - pos_I[1] * nhV; 
       const Vector3D p3B = pos_I[0] * nI + pos_I[1] * nhV; 
+      const Vector3D p3C = pos_I[0] * nI + pos_V[1] * nhV; 
       const Vector3D p3M(0., 0., 0.); 
       const Vector3D p3N = lI * nI; 
       const Vector3D p3P = pos_V[0] * nI + pos_V[1] * nhV; 
 
-      const Vector3D p3Pa_A = p3P - p3A; 
-      const Vector3D p3Pa_B = p3P - p3B; 
-      const Vector3D p3Pa_O = p3P - p3O; 
+      // const Vector3D p3Pa_A = p3P - p3A; 
+      // const Vector3D p3Pa_B = p3P - p3B; 
+      // const Vector3D p3Pa_O = p3P - p3O; 
 
-      const FourMomentum pPa_O_CM(ss, p3Pa_O.getX(), p3Pa_O.getY(), p3Pa_O.getZ()); 
-      const FourMomentum pPa_A_CM(ss, p3Pa_A.getX(), p3Pa_A.getY(), p3Pa_A.getZ());
-      const FourMomentum pPa_B_CM(ss, p3Pa_B.getX(), p3Pa_B.getY(), p3Pa_B.getZ());
+      // const FourMomentum pPa_O_CM(ss, p3Pa_O.getX(), p3Pa_O.getY(), p3Pa_O.getZ()); 
+      // const FourMomentum pPa_A_CM(ss, p3Pa_A.getX(), p3Pa_A.getY(), p3Pa_A.getZ());
+      // const FourMomentum pPa_B_CM(ss, p3Pa_B.getX(), p3Pa_B.getY(), p3Pa_B.getZ());
 
       const FourMomentum pIa_O_CM(EIa, p3O.getX(), p3O.getY(), p3O.getZ());
       const FourMomentum pIa_A_CM(EIa, p3A.getX(), p3A.getY(), p3A.getZ());
       const FourMomentum pIa_B_CM(EIa, p3B.getX(), p3B.getY(), p3B.getZ());
+      const FourMomentum pIa_C_CM(EIa, p3C.getX(), p3C.getY(), p3C.getZ()); 
+
 
       const FourMomentum pIa_O = LTinv.transform(pIa_O_CM); 
       const FourMomentum pIa_A = LTinv.transform(pIa_A_CM); 
       const FourMomentum pIa_B = LTinv.transform(pIa_B_CM); 
+      const FourMomentum pIa_C = LTinv.transform(pIa_C_CM); 
 
       // const double mImax = sqrt(EIa * EIa - p3O.dot(p3O)); 
       // const double mPmax = sqrt(EVa * EVa - p3Pa_A.dot(p3Pa_A)); 
       // const double mPmin = sqrt(EVa * EVa - p3Pa_B.dot(p3Pa_B)); 
       // const double mPLSP = sqrt(EVa * EVa - p3Pa_O.dot(p3Pa_O)); 
 
-      const vector<FourMomentum> mrc = {pIa_O, pIa_A, pIa_B};
+      const vector<FourMomentum> mrc = {pIa_O, pIa_A, pIa_B, pIa_C};
       return mrc;
 
       
