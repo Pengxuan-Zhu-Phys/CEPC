@@ -1,3 +1,6 @@
 *.so
-*.csv
 *.yoda
+
+tables/*
+
+.DS_Store
