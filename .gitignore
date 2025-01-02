@@ -3,4 +3,7 @@
 
 tables/*
 
+*.hepmc
+*.csv 
+
 .DS_Store
