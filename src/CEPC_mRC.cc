@@ -409,14 +409,14 @@ namespace Rivet
           {"dRIaIb_C",  dRIaIb_C},
           {"ctheta_pO", ctheta_pO},
           {"ctheta_pA", ctheta_pA},
-          {"chteta_pB", ctheta_pB},
-          {"chteta_pC", ctheta_pC},
-          {"chteta_pMax", ctheta_pMax},
+          {"ctheta_pB", ctheta_pB},
+          {"ctheta_pC", ctheta_pC},
+          {"ctheta_pMax", ctheta_pMax},
           {"ctheta_mO", ctheta_mO},
           {"ctheta_mA", ctheta_mA},
-          {"chteta_mB", ctheta_mB},
-          {"chteta_mC", ctheta_mC},
-          {"chteta_mMax", ctheta_mMax},
+          {"ctheta_mB", ctheta_mB},
+          {"ctheta_mC", ctheta_mC},
+          {"ctheta_mMax", ctheta_mMax},
         });
 
 
